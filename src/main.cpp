@@ -1,3 +1,4 @@
+#include "config.h"
 #include <Adafruit_INA219.h>
 #include <Adafruit_LPS2X.h>
 #include <Adafruit_NeoPixel.h>
@@ -6,12 +7,14 @@
 #include <SPI.h>
 #include <Wire.h>
 
+bool ina219_init(void);
+bool ina219_update(JsonDocument &jd);
+bool dps368_init(void);
+bool dps368_update(JsonDocument &jd);
+
 #define BUTTON 3
 #define LED 2
 #define NUMPIXELS 1
-
-#define I2C_SDA 4
-#define I2C_SCL 5
 
 Adafruit_NeoPixel pixels(NUMPIXELS, LED, NEO_GRB + NEO_KHZ800);
 TaskHandle_t TaskHandle_buttonRead;
@@ -25,7 +28,7 @@ int high = 255;
 int mid = 128;
 int low = 0;
 
-Dps368 Dps368PressureSensor = Dps368();
+// Dps368 Dps368PressureSensor = Dps368();
 Adafruit_LPS22 lps;
 Adafruit_Sensor *lps_temp, *lps_pressure;
 
@@ -41,19 +44,10 @@ void buttonRead(void *pvParameters) {
         buttonCount = 1;
       }
       doc["count"] = buttonCount;
+
+      ina219_update(doc);
+      dps368_update(doc);
       serializeJson(doc, Serial);
-
-      float temperature;
-      float pressure;
-      uint8_t oversampling = 7;
-      int16_t ret;
-
-      if (!Dps368PressureSensor.measureTempOnce(temperature, oversampling)) {
-        doc["temp"] = temperature;
-      }
-      if (!Dps368PressureSensor.measurePressureOnce(pressure, oversampling)) {
-        doc["pressure"] = pressure;
-      }
     }
     buttonLastState = buttonCurrentState;
     vTaskDelay(10 / portTICK_RATE_MS);
@@ -118,14 +112,10 @@ void setup() {
     //   delay(10);
     // }
   }
-#define MOSI 6       // la: orange
-#define SCK 7        // la: rot
-#define MISO 8       // la: braun
-#define DPS368_CS 10 // la: sw
-
-  SPI.begin(SCK, MISO, MOSI);
-  Dps368PressureSensor.begin(SPI, DPS368_CS);
-
+  ina219_init();
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+  //  Dps368PressureSensor.begin(SPI, DPS368_CS);
+  dps368_init();
   pixels.begin();
   pinMode(BUTTON, INPUT_PULLUP);
 
