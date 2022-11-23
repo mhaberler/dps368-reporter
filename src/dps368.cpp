@@ -22,7 +22,7 @@ bool dps368_update(JsonDocument &jd) {
     j["temp"] = temperature;
   }
   if (!sensor.measurePressureOnce(pressure, oversampling)) {
-    j["pressure"] = pressure;
+    j["pressure"] = pressure/100.0;
   }
   j["ts"] = micros();
   return true;

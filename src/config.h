@@ -5,3 +5,7 @@
 
 #define I2C_SDA 4
 #define I2C_SCL 5
+
+#define SEALEVELPRESSURE_HPA (1013.25)
+
+#define BMP390_ADDR 0x76

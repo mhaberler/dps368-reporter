@@ -11,10 +11,22 @@ bool ina219_init(void);
 bool ina219_update(JsonDocument &jd);
 bool dps368_init(void);
 bool dps368_update(JsonDocument &jd);
+bool lps22_init(void);
+bool lps22_update(JsonDocument &jd);
+bool bmp390_init(void);
+bool bmp390_update(JsonDocument &jd);
+bool dps310_init(void);
+bool dps310_update(JsonDocument &jd);
+bool bno_init(void);
+bool bno_update(JsonDocument &jd);
+bool fx_init(void);
+bool fx_update(JsonDocument &jd);
 
 #define BUTTON 3
 #define LED 2
 #define NUMPIXELS 1
+
+#define JSON_SIZE 4096
 
 Adafruit_NeoPixel pixels(NUMPIXELS, LED, NEO_GRB + NEO_KHZ800);
 TaskHandle_t TaskHandle_buttonRead;
@@ -28,11 +40,11 @@ int high = 255;
 int mid = 128;
 int low = 0;
 
-// Dps368 Dps368PressureSensor = Dps368();
-Adafruit_LPS22 lps;
-Adafruit_Sensor *lps_temp, *lps_pressure;
+// // Dps368 Dps368PressureSensor = Dps368();
+// Adafruit_LPS22 lps;
+// Adafruit_Sensor *lps_temp, *lps_pressure;
 
-DynamicJsonDocument doc(1024);
+StaticJsonDocument<JSON_SIZE> doc;
 
 void buttonRead(void *pvParameters) {
   while (true) {
@@ -47,7 +59,13 @@ void buttonRead(void *pvParameters) {
 
       ina219_update(doc);
       dps368_update(doc);
-      serializeJson(doc, Serial);
+      lps22_update(doc);
+      bmp390_update(doc);
+      dps310_update(doc);
+      fx_update(doc);
+      serializeJsonPretty(doc, Serial);
+      // serializeJson(doc, Serial);
+      doc.clear();
     }
     buttonLastState = buttonCurrentState;
     vTaskDelay(10 / portTICK_RATE_MS);
@@ -101,28 +119,45 @@ void i2cScanner(TwoWire *wire) {
 
 void setup() {
   Serial.begin(115200);
+  while (!Serial) {
+    delay(1);
+  }
+
   Wire.begin(I2C_SDA, I2C_SCL);
+  // Wire.setClock(400000);
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+
   i2cScanner(&Wire);
 
-  // Dps368PressureSensor.begin(Wire);
-
-  if (!lps.begin_I2C(LPS2X_I2CADDR_DEFAULT, &Wire, 0)) {
-    Serial.println("Failed to find LPS2X chip");
-    // while (1) {
-    //   delay(10);
-    // }
-  }
+  dps310_init();
   ina219_init();
-  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
-  //  Dps368PressureSensor.begin(SPI, DPS368_CS);
+  lps22_init();
+  bmp390_init();
+  fx_init();
+  // bno_init();
+
   dps368_init();
+
   pixels.begin();
   pinMode(BUTTON, INPUT_PULLUP);
 
-  xTaskCreate(buttonRead, "buttonRead", 2048 * 1, nullptr, 128 * 10,
-              &TaskHandle_buttonRead);
-  xTaskCreate(changeLedState, "changeLedState", 2048 * 1, nullptr, 128 * 1,
-              &TaskHandle_Led);
+  // xTaskCreate(buttonRead, "buttonRead", 2048 * 1, nullptr, 128 * 10,
+  //             &TaskHandle_buttonRead);
+  // xTaskCreate(changeLedState, "changeLedState", 2048 * 1, nullptr, 128 * 1,
+  //             &TaskHandle_Led);
 }
 
-void loop() {}
+void loop() {
+  ina219_update(doc);
+  dps368_update(doc);
+  lps22_update(doc);
+  bmp390_update(doc);
+  dps310_update(doc);
+  fx_update(doc);
+  // bno_update(doc);
+  // serializeJsonPretty(doc, Serial);
+  serializeJson(doc, Serial);
+  Serial.print("\n");
+  doc.clear();
+  vTaskDelay(500 / portTICK_RATE_MS);
+}
