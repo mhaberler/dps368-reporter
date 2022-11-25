@@ -122,7 +122,7 @@ void setup() {
   while (!Serial) {
     delay(1);
   }
-
+  delay(3000);
   Wire.begin(I2C_SDA, I2C_SCL);
   // Wire.setClock(400000);
   SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);

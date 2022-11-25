@@ -28,7 +28,7 @@ static uint8_t pressure_oversampling = 6;
 bool dps368_init(void) {
   sensor.begin(SPI, DPS368_CS);
 
-// 17:23:17.819 > dps368: product=0xf 15 rev=0x1 1
+  // dps368: product=0xf 15 rev=0x1 1
   uint8_t product = sensor.getProductId();
   uint8_t revision = sensor.getRevisionId();
   Serial.printf("dps368: product=0x%x %d rev=0x%x %d\n", product, product,
