@@ -1,110 +1,80 @@
-#include "config.h"
-#include <M5Unified.h>
-
-#include <Adafruit_INA219.h>
-#include <Adafruit_LPS2X.h>
-#include <Adafruit_NeoPixel.h>
 #include <ArduinoJson.h>
 #include <Dps368.h>
-#include <SPI.h>
 #include <Wire.h>
 
-bool ina219_init(void);
-bool ina219_update(JsonDocument &jd);
-bool dps368_spi_init(void);
-bool dps368_spi_update(JsonDocument &jd);
-bool dps368_i2c_init(void);
-bool dps368_i2c_update(JsonDocument &jd);
-bool lps22_init(void);
-bool lps22_update(JsonDocument &jd);
-bool bmp390_init(void);
-bool bmp390_update(JsonDocument &jd);
-bool dps310_init(void);
-bool dps310_update(JsonDocument &jd);
-bool bno_init(void);
-bool bno_update(JsonDocument &jd);
-bool fx_init(void);
-bool fx_update(JsonDocument &jd);
+#define I2C_SDA 4
+#define I2C_SCL 5
 
-#define BUTTON 3
-#define LED 2
-#define NUMPIXELS 1
-
+#define DPS368_I2C_ADDR 0x76 // pull down INT/GPIO3 pin - default is 0x77
+#define INTERVAL 500         // msec
 #define JSON_SIZE 4096
-
-Adafruit_NeoPixel pixels(NUMPIXELS, LED, NEO_GRB + NEO_KHZ800);
-TaskHandle_t TaskHandle_buttonRead;
-TaskHandle_t TaskHandle_Led;
-
-int buttonLastState = HIGH;
-int buttonCurrentState;
-int buttonCount = 1;
-
-int high = 255;
-int mid = 128;
-int low = 0;
-
-// // Dps368 Dps368PressureSensor = Dps368();
-// Adafruit_LPS22 lps;
-// Adafruit_Sensor *lps_temp, *lps_pressure;
 
 StaticJsonDocument<JSON_SIZE> doc;
 
-void buttonRead(void *pvParameters) {
-  while (true) {
-    buttonCurrentState = digitalRead(BUTTON);
-    if (buttonLastState == LOW && buttonCurrentState == HIGH) {
-      Serial.println("Button Pressed!");
-      buttonCount++;
-      if (buttonCount > 6) {
-        buttonCount = 1;
-      }
-      doc["count"] = buttonCount;
-      dps368_spi_update(doc);
+// settings - see datasheet p17 5.1  Measurement Settings and Use Case Examples
+// recommended values for:
+// Sports (High precision, high rate, background mode)
+// PM_PRC = 0x26
+//  ..... PM_RATE = 2       4 measurements/second
+//  ..... PM_PRC = 6        0110 - 64 times oversampling (High Precision).
+//                          note P_SHIFT bit in CFG_REG - must be 1
+#define PRESSURE_RATE 2
+#define PRESSURE_OVERSAMPLING 6
+// TMP_CFG = 0xA0
+// ...... TMP_EXT = 1       use external MEMS sensor for temperature
+// ...... TMP_RATE = 2      4 measurements/second
+// ...... TMP_PRC  = 0      no temperature oversampling
+#define TEMPERATURE_RATE 2
+#define TEMPERATURE_OVERSAMPLING 0
 
-      ina219_update(doc);
-      dps368_i2c_update(doc);
-      lps22_update(doc);
-      // bmp390_update(doc);
-      dps310_update(doc);
-      fx_update(doc);
-      serializeJsonPretty(doc, Serial);
-      // serializeJson(doc, Serial);
-      doc.clear();
-    }
-    buttonLastState = buttonCurrentState;
-    vTaskDelay(10 / portTICK_RATE_MS);
+static Dps368 sensor = Dps368();
+
+bool dps368_i2c_init(void) {
+
+  sensor.begin(Wire, DPS368_I2C_ADDR);
+  uint8_t product = sensor.getProductId();
+  uint8_t revision = sensor.getRevisionId();
+
+  // dps368: product=0x0 0 rev=0x1 1
+  Serial.printf("dps368 i2c: product=0x%x %d rev=0x%x %d\n", product, product,
+                revision, revision);
+
+  int16_t n =
+      sensor.startMeasureBothCont(TEMPERATURE_RATE, TEMPERATURE_OVERSAMPLING,
+                                  PRESSURE_RATE, PRESSURE_OVERSAMPLING);
+  if (n != DPS__SUCCEEDED) {
+    Serial.printf("startMeasureBothCont 0x%x %d\n", n, n);
+    return false;
   }
+  return true;
 }
 
-void changeLedState(void *pvParameters) {
-  while (true) {
-    pixels.clear();
-    switch (buttonCount) {
-    case 1:
-      pixels.setPixelColor(0, pixels.Color(high, low, low));
-      break;
-    case 2:
-      pixels.setPixelColor(0, pixels.Color(high, mid, mid));
-      break;
-    case 3:
-      pixels.setPixelColor(0, pixels.Color(low, high, low));
-      break;
-    case 4:
-      pixels.setPixelColor(0, pixels.Color(mid, high, mid));
-      break;
-    case 5:
-      pixels.setPixelColor(0, pixels.Color(low, low, high));
-      break;
-    case 6:
-      pixels.setPixelColor(0, pixels.Color(mid, mid, high));
-      break;
-    default:
-      break;
+bool dps368_i2c_update(JsonDocument &jd) {
+  float temperature[DPS__FIFO_SIZE];
+  float pressure[DPS__FIFO_SIZE];
+  uint8_t tempCount, prsCount;
+  uint32_t now = micros();
+  int16_t r = sensor.getContResults(temperature, tempCount, pressure, prsCount);
+  JsonObject j = jd.createNestedObject("dps368");
+  j["ts"] = now;
+
+  if (tempCount) {
+    JsonArray temps = j.createNestedArray("temps");
+    if (temps) {
+      for (int i = 0; i < tempCount; i++) {
+        temps.add(temperature[i]);
+      }
     }
-    pixels.show();
-    vTaskDelay(100 / portTICK_RATE_MS);
   }
+  if (prsCount) {
+    JsonArray press = j.createNestedArray("press");
+    if (press) {
+      for (int i = 0; i < prsCount; i++) {
+        press.add(pressure[i] / 100.0);
+      }
+    }
+  }
+  return true;
 }
 
 void i2cScanner(TwoWire *wire) {
@@ -127,44 +97,18 @@ void setup() {
   while (!Serial) {
     delay(1);
   }
-  delay(3000);
+  delay(2000);
   Wire.begin(I2C_SDA, I2C_SCL);
   // Wire.setClock(400000);
-  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
-
   i2cScanner(&Wire);
-
-  dps310_init();
-  ina219_init();
-  lps22_init();
-  // bmp390_init();
-  fx_init();
-  // bno_init();
-
   dps368_i2c_init();
-  dps368_spi_init();
-
-  pixels.begin();
-  pinMode(BUTTON, INPUT_PULLUP);
-
-  // xTaskCreate(buttonRead, "buttonRead", 2048 * 1, nullptr, 128 * 10,
-  //             &TaskHandle_buttonRead);
-  // xTaskCreate(changeLedState, "changeLedState", 2048 * 1, nullptr, 128 * 1,
-  //             &TaskHandle_Led);
 }
 
 void loop() {
-  ina219_update(doc);
-  dps368_spi_update(doc);
+
   dps368_i2c_update(doc);
-  lps22_update(doc);
-  // bmp390_update(doc);
-  dps310_update(doc);
-  fx_update(doc);
-  // bno_update(doc);
-  // serializeJsonPretty(doc, Serial);
   serializeJson(doc, Serial);
   Serial.print("\n");
   doc.clear();
-  vTaskDelay(500 / portTICK_RATE_MS);
+  vTaskDelay(INTERVAL / portTICK_RATE_MS);
 }
