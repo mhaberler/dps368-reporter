@@ -13,6 +13,8 @@ bool ina219_init(void);
 bool ina219_update(JsonDocument &jd);
 bool dps368_spi_init(void);
 bool dps368_spi_update(JsonDocument &jd);
+bool dps368_i2c_init(void);
+bool dps368_i2c_update(JsonDocument &jd);
 bool lps22_init(void);
 bool lps22_update(JsonDocument &jd);
 bool bmp390_init(void);
@@ -58,9 +60,10 @@ void buttonRead(void *pvParameters) {
         buttonCount = 1;
       }
       doc["count"] = buttonCount;
+      dps368_spi_update(doc);
 
       ina219_update(doc);
-      dps368_spi_update(doc);
+      dps368_i2c_update(doc);
       lps22_update(doc);
       // bmp390_update(doc);
       dps310_update(doc);
@@ -138,6 +141,7 @@ void setup() {
   fx_init();
   // bno_init();
 
+  dps368_i2c_init();
   dps368_spi_init();
 
   pixels.begin();
@@ -152,6 +156,7 @@ void setup() {
 void loop() {
   ina219_update(doc);
   dps368_spi_update(doc);
+  dps368_i2c_update(doc);
   lps22_update(doc);
   // bmp390_update(doc);
   dps310_update(doc);

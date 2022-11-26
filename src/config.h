@@ -9,3 +9,5 @@
 #define SEALEVELPRESSURE_HPA (1013.25)
 
 #define BMP390_ADDR 0x76
+
+#define DPS368_I2C_ADDR 0x76
