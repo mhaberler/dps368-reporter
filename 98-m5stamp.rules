@@ -1,0 +1,5 @@
+
+# M5stamp C3U, already programmed with -DARDUINO_USB_CDC_ON_BOOT
+# 303a:1001
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", SYMLINK+="m5stamp"
+
