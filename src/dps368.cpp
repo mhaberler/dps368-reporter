@@ -25,7 +25,7 @@ static Dps368 sensor = Dps368();
 static uint8_t temperature_oversampling = 0;
 static uint8_t pressure_oversampling = 6;
 
-bool dps368_init(void) {
+bool dps368_spi_init(void) {
   sensor.begin(SPI, DPS368_CS);
 
   // dps368: product=0xf 15 rev=0x1 1
@@ -44,7 +44,7 @@ bool dps368_init(void) {
   return true;
 }
 
-bool dps368_update(JsonDocument &jd) {
+bool dps368_spi_update(JsonDocument &jd) {
   float temperature[DPS__FIFO_SIZE];
   float pressure[DPS__FIFO_SIZE];
   uint8_t tempCount, prsCount;
@@ -72,7 +72,7 @@ bool dps368_update(JsonDocument &jd) {
   return true;
 }
 
-// bool dps368_update(JsonDocument &jd) {
+// bool dps368_spi_update(JsonDocument &jd) {
 //   float temperature;
 //   float pressure;
 //   JsonObject j = jd.createNestedObject("dps368");

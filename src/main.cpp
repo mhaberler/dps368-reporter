@@ -1,4 +1,6 @@
 #include "config.h"
+#include <M5Unified.h>
+
 #include <Adafruit_INA219.h>
 #include <Adafruit_LPS2X.h>
 #include <Adafruit_NeoPixel.h>
@@ -9,8 +11,8 @@
 
 bool ina219_init(void);
 bool ina219_update(JsonDocument &jd);
-bool dps368_init(void);
-bool dps368_update(JsonDocument &jd);
+bool dps368_spi_init(void);
+bool dps368_spi_update(JsonDocument &jd);
 bool lps22_init(void);
 bool lps22_update(JsonDocument &jd);
 bool bmp390_init(void);
@@ -58,9 +60,9 @@ void buttonRead(void *pvParameters) {
       doc["count"] = buttonCount;
 
       ina219_update(doc);
-      dps368_update(doc);
+      dps368_spi_update(doc);
       lps22_update(doc);
-      bmp390_update(doc);
+      // bmp390_update(doc);
       dps310_update(doc);
       fx_update(doc);
       serializeJsonPretty(doc, Serial);
@@ -132,11 +134,11 @@ void setup() {
   dps310_init();
   ina219_init();
   lps22_init();
-  bmp390_init();
+  // bmp390_init();
   fx_init();
   // bno_init();
 
-  dps368_init();
+  dps368_spi_init();
 
   pixels.begin();
   pinMode(BUTTON, INPUT_PULLUP);
@@ -149,9 +151,9 @@ void setup() {
 
 void loop() {
   ina219_update(doc);
-  dps368_update(doc);
+  dps368_spi_update(doc);
   lps22_update(doc);
-  bmp390_update(doc);
+  // bmp390_update(doc);
   dps310_update(doc);
   fx_update(doc);
   // bno_update(doc);
