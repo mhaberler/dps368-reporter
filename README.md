@@ -1,8 +1,5 @@
-## An example PlatformIO project for M5Stamp C3 using FreeRTOS tasks
+## read a DPS368 baro sensor and output on console as JSON
 
-The internal RGB led will change its color with each press on the button.
-Two FreeRTOS task used for the functionality. 
-One to read the button presses and the other to set correct led status.
+JSON updates are newline delimited
 
-Everything adjusted in platformio.ini
-Open the project, build and upload.
+made for esp32c3 (m5Stamp-c3 or m5stamp-c3u) but should work with any washer&dryer
