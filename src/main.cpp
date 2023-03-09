@@ -77,13 +77,13 @@ bool dps368_i2c_update(JsonDocument &jd) {
   return true;
 }
 
-void i2cScanner(TwoWire *wire) {
+void i2cScanner(TwoWire &wire) {
   Serial.printf("I2C scanner. Scanning bus..\n");
   byte count = 0;
 
   for (byte i = 8; i < 125; i++) {
-    wire->beginTransmission(i);       // Begin I2C transmission Address (i)
-    if (wire->endTransmission() == 0) // Receive 0 = success (ACK response)
+    wire.beginTransmission(i);       // Begin I2C transmission Address (i)
+    if (wire.endTransmission() == 0) // Receive 0 = success (ACK response)
     {
       Serial.printf("found i2c device at 0x%x\n", i);
       count++;
@@ -99,8 +99,8 @@ void setup() {
   }
   delay(2000);
   Wire.begin(I2C_SDA, I2C_SCL);
-  // Wire.setClock(400000);
-  i2cScanner(&Wire);
+  Wire.setClock(400000);
+  i2cScanner(Wire);
   dps368_i2c_init();
 }
 
