@@ -1,5 +1,5 @@
 #include <ArduinoJson.h>
-#include <Dps368.h>
+#include <Dps3xx.h>
 #include <Wire.h>
 
 #define I2C_SDA 4
@@ -27,7 +27,7 @@ StaticJsonDocument<JSON_SIZE> doc;
 #define TEMPERATURE_RATE 2
 #define TEMPERATURE_OVERSAMPLING 0
 
-static Dps368 sensor = Dps368();
+static Dps3xx sensor = Dps3xx();
 
 bool dps368_i2c_init(void) {
 
